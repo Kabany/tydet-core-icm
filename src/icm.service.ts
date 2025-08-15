@@ -107,5 +107,17 @@ export class ICM extends Service {
     }
     return this.at
   }
+
+  async getTokenInfo() {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.get(this.icmFile.auth_url + "/info", { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as {id: number, name: string, domain: string}
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getTokenInfo", err)
+    }
+  }
 }
 

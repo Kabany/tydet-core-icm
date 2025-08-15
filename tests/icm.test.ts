@@ -13,8 +13,17 @@ describe("ICM Service", () => {
 
   it("should get access token from the ICM app", async () => {
     let access_token = await icm.getAccessToken()
-    console.log(access_token)
+    //console.log(access_token)
     expect(access_token).not.toBeNull()
+  })
+
+  it("should get info from access token", async () => {
+    let tokenInfo = await icm.getTokenInfo()
+    console.log(tokenInfo)
+    expect(tokenInfo).not.toBeNull()
+    expect(tokenInfo.id).not.toBeNull() 
+    expect(tokenInfo.name).not.toBeNull()
+    expect(tokenInfo.domain).not.toBeNull() 
   })
 
   afterAll(async () => {
