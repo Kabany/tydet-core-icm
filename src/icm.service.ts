@@ -5,15 +5,10 @@ import { DateUtils } from "tydet-utils"
 import * as jwt from "jsonwebtoken"
 import axios from "axios"
 import { devNull } from "os"
-
-export interface KabanyIcmFile {
-  type: string
-  private_key_id: number
-  private_key_name: string
-  private_key: string
-  access_domain: string
-  auth_url: string
-}
+import { KabanyIcmFile } from "./dto/icmFile.dto"
+import { IcmInfo } from "./dto/icmInfo.dto"
+import { Project } from "./dto/project.dto"
+import { PaginationInfo } from "./dto/pagination.dto"
 
 const PATH_FILE = "PATH_FILE";
 
@@ -122,21 +117,73 @@ export class ICM extends Service {
       let result = await axios.get(this.icmFile.auth_url + "/info", { headers: {
         "Authorization": `Bearer ${at}`
       }})
-      return result.data.data as {id: number, name: string, domain: string}
+      return result.data.data as IcmInfo
     } catch(err) {
       throw new IcmError("An error ocurred with the request getTokenInfo", err)
     }
   }
 
-  async getProjects() {
+  async getProjects(per: number = 1000, page: number = 1) {
     let at = await this.getAccessToken()
     try {
-      let result = await axios.get(this.icmFile.auth_url + "/info", { headers: {
+      let result = await axios.get(this.baseUrl + `/projects?per=${per > 1000 ? 1000 : per}&page=${page}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
-      return result.data.data as {id: number, name: string, domain: string}
+      return result.data.data as {projects: Project[], pagination: PaginationInfo}
     } catch(err) {
-      throw new IcmError("An error ocurred with the request getTokenInfo", err)
+      throw new IcmError("An error ocurred with the request getProjects", err)
+    }
+  }
+
+  async createProject(name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.post(this.baseUrl + `/projects`, {
+        name
+      }, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as Project
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request createProject", err)
+    }
+  }
+
+  async getProject(name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.get(this.baseUrl + `/projects/${name}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as Project
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getProject", err)
+    }
+  }
+
+  async updateProject(projectName: string, newName: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.put(this.baseUrl + `/projects/${projectName}`, {
+        name: newName
+      }, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as Project
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getProject", err)
+    }
+  }
+
+  async removeProject(name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.delete(this.baseUrl + `/projects/${name}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as Project
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getProject", err)
     }
   }
 }
