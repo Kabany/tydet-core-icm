@@ -7,6 +7,8 @@
 node_modules/
 dist/
 
+local_key.json
+
 # Compiled Java class files
 *.class
 

@@ -95,7 +95,7 @@ export class ICM extends Service {
       })
       return result.data.data.access_token
     } catch(err) {
-      throw new IcmError("An error ocurred when requesting an access token with the provider")
+      throw new IcmError("An error ocurred when requesting an access token with the provider", err)
     }
   }
 
