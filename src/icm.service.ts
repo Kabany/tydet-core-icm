@@ -4,10 +4,12 @@ import { readFileSync } from "fs"
 import { DateUtils } from "tydet-utils"
 import * as jwt from "jsonwebtoken"
 import axios from "axios"
+import { devNull } from "os"
 
 export interface KabanyIcmFile {
   type: string
   private_key_id: number
+  private_key_name: string
   private_key: string
   access_domain: string
   auth_url: string
@@ -18,7 +20,8 @@ const PATH_FILE = "PATH_FILE";
 export class ICM extends Service {
   private pathFile: string
   private icmFile: KabanyIcmFile
-  private at: string
+  private baseUrl: string
+  private accessToken: string
   private lastSync: Date
 
   constructor(icmPathFile: string) {
@@ -43,6 +46,7 @@ export class ICM extends Service {
       if (this.icmFile.type != "internal-credential-key") {
         throw new IcmError("Invalid key file")
       }
+      this.baseUrl = this.icmFile.auth_url.replace("/auth/token", "")
       
     } catch(err) {
       throw new IcmError("Missing or invalid key file")
@@ -53,7 +57,8 @@ export class ICM extends Service {
     this.lastSync = null
     this.icmFile = null
     this.icmFile = null
-    this.at = null
+    this.accessToken = null
+    this.baseUrl = devNull
     try {
       this.pathFile = this.params.get(PATH_FILE) as string
       let f = readFileSync(this.pathFile, "utf8")
@@ -61,6 +66,7 @@ export class ICM extends Service {
       if (this.icmFile.type != "internal-credential-key") {
         throw new IcmError("Invalid key file")
       }
+      this.baseUrl = this.icmFile.auth_url.replace("/auth/token", "")
       
     } catch(err) {
       throw new IcmError("Missing or invalid key file")
@@ -71,14 +77,16 @@ export class ICM extends Service {
     this.lastSync = null
     this.icmFile = null
     this.icmFile = null
-    this.at = null
+    this.accessToken = null
+    this.baseUrl = devNull
   }
 
 
 
   private createJwt() {
     let payload: any = {
-      iss: `${this.icmFile.private_key_id}`,
+      iss: this.icmFile.private_key_name,
+      iid: this.icmFile.private_key_id,
       sub: this.icmFile.access_domain,
       aud: this.icmFile.auth_url,
       iat: Math.floor(Date.now() / 1000),
@@ -102,13 +110,25 @@ export class ICM extends Service {
   async getAccessToken() {
     if (this.lastSync == null || DateUtils.minutesOfDifference(new Date(), this.lastSync) > 50) {
       let token = this.createJwt()
-      this.at = await this.requestToken(token)
+      this.accessToken = await this.requestToken(token)
       this.lastSync = new Date()
     }
-    return this.at
+    return this.accessToken
   }
 
   async getTokenInfo() {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.get(this.icmFile.auth_url + "/info", { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as {id: number, name: string, domain: string}
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getTokenInfo", err)
+    }
+  }
+
+  async getProjects() {
     let at = await this.getAccessToken()
     try {
       let result = await axios.get(this.icmFile.auth_url + "/info", { headers: {
