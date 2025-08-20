@@ -1,2 +1,6 @@
 export { ICM } from "./icm.service"
 export { IcmError } from "./icm.error"
+export { KabanyIcmFile } from "./dto/icmFile.dto"
+export { IcmInfo } from "./dto/icmInfo.dto"
+export { Project, ProjectEnvironment, ProjectParameter } from "./dto/project.dto"
+export { PaginationInfo } from "./dto/pagination.dto"
