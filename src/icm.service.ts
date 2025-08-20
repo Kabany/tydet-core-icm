@@ -7,7 +7,7 @@ import axios from "axios"
 import { devNull } from "os"
 import { KabanyIcmFile } from "./dto/icmFile.dto"
 import { IcmInfo } from "./dto/icmInfo.dto"
-import { Project, ProjectEnvironment } from "./dto/project.dto"
+import { Project, ProjectEnvironment, ProjectParameter } from "./dto/project.dto"
 import { PaginationInfo } from "./dto/pagination.dto"
 
 const PATH_FILE = "PATH_FILE";
@@ -181,7 +181,7 @@ export class ICM extends Service {
       let result = await axios.delete(this.baseUrl + `/projects/${name}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
-      return result.data.data as Project
+      return true
     } catch(err) {
       throw new IcmError("An error ocurred with the request getProject", err)
     }
@@ -245,9 +245,73 @@ export class ICM extends Service {
       let result = await axios.delete(this.baseUrl + `/projects/${project}/environments/${name}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
-      return result.data.data as Project
+      return true
     } catch(err) {
       throw new IcmError("An error ocurred with the request removeEnvironment", err)
+    }
+  }
+
+  async getParameters(project: string, per: number = 1000, page: number = 1) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.get(this.baseUrl + `/projects/${project}/parameters?per=${per > 1000 ? 1000 : per}&page=${page}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as {parameters: ProjectParameter[], pagination: PaginationInfo}
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getParameters", err)
+    }
+  }
+
+  async createParameter(project: string, name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.post(this.baseUrl + `/projects/${project}/parameters`, {
+        name
+      }, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as ProjectParameter
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request createParameter", err)
+    }
+  }
+
+  async getParameter(project: string, name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.get(this.baseUrl + `/projects/${project}/parameters/${name}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as ProjectParameter
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getParameter", err)
+    }
+  }
+
+  async updateParameter(project: string, parameter: string, newName: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.put(this.baseUrl + `/projects/${project}/parameters/${parameter}`, {
+        name: newName
+      }, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as ProjectParameter
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request updateParameter", err)
+    }
+  }
+
+  async removeParameter(project: string, name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.delete(this.baseUrl + `/projects/${project}/parameters/${name}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return true
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request removeParameter", err)
     }
   }
 }

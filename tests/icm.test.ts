@@ -74,6 +74,31 @@ describe("ICM Service", () => {
     await icm.removeProject(newProject.name)
   })
 
+  it("should test all CRUD operations for project parameters", async () => {
+    let newProject = await icm.createProject("param_holder")
+    expect(newProject.name).toBe("param_holder")
+    expect(newProject.id).not.toBeNull()
+
+    let newParam = await icm.createParameter(newProject.name, "master")
+    expect(newParam.name).toBe("master")
+    expect(newParam.id).not.toBeNull()
+    expect(newParam.projectId).toBe(newProject.id)
+
+    let updated = await icm.updateParameter(newProject.name, "master", "main")
+    expect(updated.name).toBe("main")
+    expect(updated.projectId).toBe(newProject.id)
+    expect(updated.id).toBe(newParam.id)
+
+    let parameters = await icm.getParameters(newProject.name)
+    expect(parameters.parameters.length).toBe(1)
+
+    await icm.removeParameter(newProject.name, "main")
+    parameters = await icm.getParameters(newProject.name)
+    expect(parameters.parameters.length).toBe(0)
+    
+    await icm.removeProject(newProject.name)
+  })
+
   afterAll(async () => {
     // close service
     await app.ejectAllServices()
