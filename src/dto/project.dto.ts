@@ -20,12 +20,3 @@ export interface ProjectParameter {
   createdAt?: Date
   updatedAt?: Date
 }
-
-export interface ProjectParameterValue {
-  id?: number
-  projectId?: number
-  environmentId?: number
-  value: string
-  createdAt?: Date
-  updatedAt?: Date
-}

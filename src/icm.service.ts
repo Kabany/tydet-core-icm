@@ -314,5 +314,57 @@ export class ICM extends Service {
       throw new IcmError("An error ocurred with the request removeParameter", err)
     }
   }
+
+  async createValue(project: string, parameter: string, environment: string, value: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.post(this.baseUrl + `/projects/${project}/value/${parameter}/${environment}`, {
+        value
+      }, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return true
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request createValue", err)
+    }
+  }
+
+  async getValue(project: string, parameter: string, environment: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.get(this.baseUrl + `/projects/${project}/value/${parameter}/${environment}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data.value as string
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getValue", err)
+    }
+  }
+
+  async updateValue(project: string, parameter: string, environment: string, value: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.put(this.baseUrl + `/projects/${project}/value/${parameter}/${environment}`, {
+        value
+      }, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return true
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request updateValue", err)
+    }
+  }
+
+  async removeValue(project: string, parameter: string, environment: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.delete(this.baseUrl + `/projects/${project}/value/${parameter}/${environment}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return true
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request removeValue", err)
+    }
+  }
 }
 

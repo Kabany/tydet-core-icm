@@ -99,6 +99,42 @@ describe("ICM Service", () => {
     await icm.removeProject(newProject.name)
   })
 
+  it("should test all CRUD operations for project values", async () => {
+    let newProject = await icm.createProject("holder")
+    expect(newProject.name).toBe("holder")
+    expect(newProject.id).not.toBeNull()
+
+    let newParam = await icm.createParameter(newProject.name, "my_name")
+    expect(newParam.name).toBe("my_name")
+    expect(newParam.id).not.toBeNull()
+    expect(newParam.projectId).toBe(newProject.id)
+
+    let newEnv = await icm.createEnvironment(newProject.name, "prod")
+    expect(newEnv.name).toBe("prod")
+    expect(newEnv.id).not.toBeNull()
+    expect(newEnv.projectId).toBe(newProject.id)
+
+    let value = await icm.createValue(newProject.name, newParam.name, newEnv.name, "This is my Name")
+    expect(value).toBe(true)
+
+    let compare = await icm.getValue(newProject.name, newParam.name, newEnv.name)
+    expect(compare).toBe("This is my Name")
+
+    let updated = await icm.updateValue(newProject.name, newParam.name, newEnv.name, "This is my New Name")
+    expect(updated).toBe(true)
+
+    compare = await icm.getValue(newProject.name, newParam.name, newEnv.name)
+    expect(compare).toBe("This is my New Name")
+
+    await icm.removeValue(newProject.name, newParam.name, newEnv.name)
+    compare = await icm.getValue(newProject.name, newParam.name, newEnv.name)
+    expect(compare).toBeNull()
+
+    await icm.removeEnvironment(newProject.name, newEnv.name)
+    await icm.removeParameter(newProject.name, newParam.name)
+    await icm.removeProject(newProject.name)
+  })
+
   afterAll(async () => {
     // close service
     await app.ejectAllServices()
