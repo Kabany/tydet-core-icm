@@ -49,6 +49,31 @@ describe("ICM Service", () => {
     expect(projects.projects.length).toBe(0)
   })
 
+  it("should test all CRUD operations for project environments", async () => {
+    let newProject = await icm.createProject("env_holder")
+    expect(newProject.name).toBe("env_holder")
+    expect(newProject.id).not.toBeNull()
+
+    let newEnv = await icm.createEnvironment(newProject.name, "master")
+    expect(newEnv.name).toBe("master")
+    expect(newEnv.id).not.toBeNull()
+    expect(newEnv.projectId).toBe(newProject.id)
+
+    let updated = await icm.updateEnvironment(newProject.name, "master", "main")
+    expect(updated.name).toBe("main")
+    expect(updated.projectId).toBe(newProject.id)
+    expect(updated.id).toBe(newEnv.id)
+
+    let environments = await icm.getEnvironments(newProject.name)
+    expect(environments.environments.length).toBe(1)
+
+    await icm.removeEnvironment(newProject.name, "main")
+    environments = await icm.getEnvironments(newProject.name)
+    expect(environments.environments.length).toBe(0)
+    
+    await icm.removeProject(newProject.name)
+  })
+
   afterAll(async () => {
     // close service
     await app.ejectAllServices()

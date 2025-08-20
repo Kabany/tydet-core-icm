@@ -7,7 +7,7 @@ import axios from "axios"
 import { devNull } from "os"
 import { KabanyIcmFile } from "./dto/icmFile.dto"
 import { IcmInfo } from "./dto/icmInfo.dto"
-import { Project } from "./dto/project.dto"
+import { Project, ProjectEnvironment } from "./dto/project.dto"
 import { PaginationInfo } from "./dto/pagination.dto"
 
 const PATH_FILE = "PATH_FILE";
@@ -184,6 +184,70 @@ export class ICM extends Service {
       return result.data.data as Project
     } catch(err) {
       throw new IcmError("An error ocurred with the request getProject", err)
+    }
+  }
+
+  async getEnvironments(project: string, per: number = 1000, page: number = 1) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.get(this.baseUrl + `/projects/${project}/environments?per=${per > 1000 ? 1000 : per}&page=${page}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as {environments: ProjectEnvironment[], pagination: PaginationInfo}
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getEnvironments", err)
+    }
+  }
+
+  async createEnvironment(project: string, name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.post(this.baseUrl + `/projects/${project}/environments`, {
+        name
+      }, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as ProjectEnvironment
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request createEnvironment", err)
+    }
+  }
+
+  async getEnvironment(project: string, name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.get(this.baseUrl + `/projects/${project}/environments/${name}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as ProjectEnvironment
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request getEnvironment", err)
+    }
+  }
+
+  async updateEnvironment(project: string, environment: string, newName: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.put(this.baseUrl + `/projects/${project}/environments/${environment}`, {
+        name: newName
+      }, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as ProjectEnvironment
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request updateEnvironment", err)
+    }
+  }
+
+  async removeEnvironment(project: string, name: string) {
+    let at = await this.getAccessToken()
+    try {
+      let result = await axios.delete(this.baseUrl + `/projects/${project}/environments/${name}`, { headers: {
+        "Authorization": `Bearer ${at}`
+      }})
+      return result.data.data as Project
+    } catch(err) {
+      throw new IcmError("An error ocurred with the request removeEnvironment", err)
     }
   }
 }
