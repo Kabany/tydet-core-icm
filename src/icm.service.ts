@@ -4,7 +4,6 @@ import { readFileSync } from "fs"
 import { DateUtils } from "tydet-utils"
 import * as jwt from "jsonwebtoken"
 import axios from "axios"
-import { devNull } from "os"
 import { KabanyIcmFile } from "./dto/icmFile.dto"
 import { IcmInfo } from "./dto/icmInfo.dto"
 import { Project, ProjectEnvironment, ProjectParameter } from "./dto/project.dto"
@@ -18,6 +17,9 @@ export class ICM extends Service {
   private baseUrl: string
   private accessToken: string
   private lastSync: Date
+
+  private currentProject: string
+  private currentEnvironment: string
 
   constructor(icmPathFile: string) {
     let map = new Map()
@@ -41,7 +43,7 @@ export class ICM extends Service {
       if (this.icmFile.type != "internal-credential-key") {
         throw new IcmError("Invalid key file")
       }
-      this.baseUrl = this.icmFile.auth_url.replace("/auth/token", "")
+      this.baseUrl = this.icmFile.auth_url
       
     } catch(err) {
       throw new IcmError("Missing or invalid key file")
@@ -53,7 +55,10 @@ export class ICM extends Service {
     this.icmFile = null
     this.icmFile = null
     this.accessToken = null
-    this.baseUrl = devNull
+    this.baseUrl = null
+    this.currentProject = null
+    this.currentEnvironment = null
+
     try {
       this.pathFile = this.params.get(PATH_FILE) as string
       let f = readFileSync(this.pathFile, "utf8")
@@ -61,7 +66,7 @@ export class ICM extends Service {
       if (this.icmFile.type != "internal-credential-key") {
         throw new IcmError("Invalid key file")
       }
-      this.baseUrl = this.icmFile.auth_url.replace("/auth/token", "")
+      this.baseUrl = this.icmFile.auth_url
       
     } catch(err) {
       throw new IcmError("Missing or invalid key file")
@@ -73,7 +78,9 @@ export class ICM extends Service {
     this.icmFile = null
     this.icmFile = null
     this.accessToken = null
-    this.baseUrl = devNull
+    this.baseUrl = null
+    this.currentProject = null
+    this.currentEnvironment = null
   }
 
 
@@ -93,7 +100,7 @@ export class ICM extends Service {
 
   private async requestToken(requester: string) {
     try {
-      let result = await axios.post(this.icmFile.auth_url, {
+      let result = await axios.post(this.icmFile.auth_url + `/auth/token`, {
         assertion: requester
       })
       return result.data.data.access_token
@@ -114,7 +121,7 @@ export class ICM extends Service {
   async getTokenInfo() {
     let at = await this.getAccessToken()
     try {
-      let result = await axios.get(this.icmFile.auth_url + "/info", { headers: {
+      let result = await axios.get(this.icmFile.auth_url + `/auth/token/info`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
       return result.data.data as IcmInfo
@@ -149,18 +156,6 @@ export class ICM extends Service {
     }
   }
 
-  async getProject(name: string) {
-    let at = await this.getAccessToken()
-    try {
-      let result = await axios.get(this.baseUrl + `/projects/${name}`, { headers: {
-        "Authorization": `Bearer ${at}`
-      }})
-      return result.data.data as Project
-    } catch(err) {
-      throw new IcmError("An error ocurred with the request getProject", err)
-    }
-  }
-
   async updateProject(projectName: string, newName: string) {
     let at = await this.getAccessToken()
     try {
@@ -187,10 +182,35 @@ export class ICM extends Service {
     }
   }
 
-  async getEnvironments(project: string, per: number = 1000, page: number = 1) {
+  clear() {
+    this.currentProject = null
+    this.currentEnvironment = null
+  }
+
+  setProject(project: string) {
+    this.currentProject = project
+  }
+
+  getCurrentProject() {
+    return this.currentProject
+  }
+
+  setEnvironment(environment: string) {
+    this.currentEnvironment = environment
+  }
+
+  getCurrentEnvironment() {
+    return this.currentEnvironment
+  }
+
+  
+  async getEnvironments(per: number = 1000, page: number = 1) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.get(this.baseUrl + `/projects/${project}/environments?per=${per > 1000 ? 1000 : per}&page=${page}`, { headers: {
+      let result = await axios.get(this.baseUrl + `/projects/${this.currentProject}/environments?per=${per > 1000 ? 1000 : per}&page=${page}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
       return result.data.data as {environments: ProjectEnvironment[], pagination: PaginationInfo}
@@ -199,10 +219,13 @@ export class ICM extends Service {
     }
   }
 
-  async createEnvironment(project: string, name: string) {
+  async createEnvironment(name: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.post(this.baseUrl + `/projects/${project}/environments`, {
+      let result = await axios.post(this.baseUrl + `/projects/${this.currentProject}/environments`, {
         name
       }, { headers: {
         "Authorization": `Bearer ${at}`
@@ -213,22 +236,13 @@ export class ICM extends Service {
     }
   }
 
-  async getEnvironment(project: string, name: string) {
-    let at = await this.getAccessToken()
-    try {
-      let result = await axios.get(this.baseUrl + `/projects/${project}/environments/${name}`, { headers: {
-        "Authorization": `Bearer ${at}`
-      }})
-      return result.data.data as ProjectEnvironment
-    } catch(err) {
-      throw new IcmError("An error ocurred with the request getEnvironment", err)
+  async updateEnvironment(environment: string, newName: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
     }
-  }
-
-  async updateEnvironment(project: string, environment: string, newName: string) {
     let at = await this.getAccessToken()
     try {
-      let result = await axios.put(this.baseUrl + `/projects/${project}/environments/${environment}`, {
+      let result = await axios.put(this.baseUrl + `/projects/${this.currentProject}/environments/${environment}`, {
         name: newName
       }, { headers: {
         "Authorization": `Bearer ${at}`
@@ -239,10 +253,13 @@ export class ICM extends Service {
     }
   }
 
-  async removeEnvironment(project: string, name: string) {
+  async removeEnvironment(name: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.delete(this.baseUrl + `/projects/${project}/environments/${name}`, { headers: {
+      let result = await axios.delete(this.baseUrl + `/projects/${this.currentProject}/environments/${name}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
       return true
@@ -251,10 +268,14 @@ export class ICM extends Service {
     }
   }
 
-  async getParameters(project: string, per: number = 1000, page: number = 1) {
+
+  async getParameters(per: number = 1000, page: number = 1) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.get(this.baseUrl + `/projects/${project}/parameters?per=${per > 1000 ? 1000 : per}&page=${page}`, { headers: {
+      let result = await axios.get(this.baseUrl + `/projects/${this.currentProject}/parameters?per=${per > 1000 ? 1000 : per}&page=${page}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
       return result.data.data as {parameters: ProjectParameter[], pagination: PaginationInfo}
@@ -263,10 +284,13 @@ export class ICM extends Service {
     }
   }
 
-  async createParameter(project: string, name: string) {
+  async createParameter(name: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.post(this.baseUrl + `/projects/${project}/parameters`, {
+      let result = await axios.post(this.baseUrl + `/projects/${this.currentProject}/parameters`, {
         name
       }, { headers: {
         "Authorization": `Bearer ${at}`
@@ -277,22 +301,13 @@ export class ICM extends Service {
     }
   }
 
-  async getParameter(project: string, name: string) {
-    let at = await this.getAccessToken()
-    try {
-      let result = await axios.get(this.baseUrl + `/projects/${project}/parameters/${name}`, { headers: {
-        "Authorization": `Bearer ${at}`
-      }})
-      return result.data.data as ProjectParameter
-    } catch(err) {
-      throw new IcmError("An error ocurred with the request getParameter", err)
+  async updateParameter(parameter: string, newName: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
     }
-  }
-
-  async updateParameter(project: string, parameter: string, newName: string) {
     let at = await this.getAccessToken()
     try {
-      let result = await axios.put(this.baseUrl + `/projects/${project}/parameters/${parameter}`, {
+      let result = await axios.put(this.baseUrl + `/projects/${this.currentProject}/parameters/${parameter}`, {
         name: newName
       }, { headers: {
         "Authorization": `Bearer ${at}`
@@ -303,10 +318,13 @@ export class ICM extends Service {
     }
   }
 
-  async removeParameter(project: string, name: string) {
+  async removeParameter(name: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.delete(this.baseUrl + `/projects/${project}/parameters/${name}`, { headers: {
+      let result = await axios.delete(this.baseUrl + `/projects/${this.currentProject}/parameters/${name}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
       return true
@@ -315,10 +333,17 @@ export class ICM extends Service {
     }
   }
 
-  async createValue(project: string, parameter: string, environment: string, value: string) {
+
+  async createValue(parameter: string, value: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
+    if (this.currentEnvironment == null) {
+      throw new IcmError("No environment selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.post(this.baseUrl + `/projects/${project}/value/${parameter}/${environment}`, {
+      let result = await axios.post(this.baseUrl + `/projects/${this.currentProject}/value/${parameter}/${this.currentEnvironment}`, {
         value
       }, { headers: {
         "Authorization": `Bearer ${at}`
@@ -329,10 +354,16 @@ export class ICM extends Service {
     }
   }
 
-  async getValue(project: string, parameter: string, environment: string) {
+  async getValue(parameter: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
+    if (this.currentEnvironment == null) {
+      throw new IcmError("No environment selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.get(this.baseUrl + `/projects/${project}/value/${parameter}/${environment}`, { headers: {
+      let result = await axios.get(this.baseUrl + `/projects/${this.currentProject}/value/${parameter}/${this.currentEnvironment}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
       return result.data.data.value as string
@@ -341,10 +372,16 @@ export class ICM extends Service {
     }
   }
 
-  async updateValue(project: string, parameter: string, environment: string, value: string) {
+  async updateValue(parameter: string, value: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
+    if (this.currentEnvironment == null) {
+      throw new IcmError("No environment selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.put(this.baseUrl + `/projects/${project}/value/${parameter}/${environment}`, {
+      let result = await axios.put(this.baseUrl + `/projects/${this.currentProject}/value/${parameter}/${this.currentEnvironment}`, {
         value
       }, { headers: {
         "Authorization": `Bearer ${at}`
@@ -355,10 +392,16 @@ export class ICM extends Service {
     }
   }
 
-  async removeValue(project: string, parameter: string, environment: string) {
+  async removeValue(parameter: string) {
+    if (this.currentProject == null) {
+      throw new IcmError("No project selected")
+    }
+    if (this.currentEnvironment == null) {
+      throw new IcmError("No environment selected")
+    }
     let at = await this.getAccessToken()
     try {
-      let result = await axios.delete(this.baseUrl + `/projects/${project}/value/${parameter}/${environment}`, { headers: {
+      let result = await axios.delete(this.baseUrl + `/projects/${this.currentProject}/value/${parameter}/${this.currentEnvironment}`, { headers: {
         "Authorization": `Bearer ${at}`
       }})
       return true
