@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios';
 import { CoreError } from 'tydet-core'
 
 export class IcmError extends CoreError {
@@ -8,7 +9,16 @@ export class IcmError extends CoreError {
     this.name = this.constructor.name
     this.message = message
     if (err != null) {
-      if (err instanceof Error) {
+      if (err instanceof AxiosError) {
+        if (err.response.data != null) {
+          this.message += (`\nServer response:\nCode: ${err.response.data.code}\nMessage: ${err.response.data.message}`)
+          if (err.response.data.errorBody) {
+            this.message += `\nErrors: ${err.response.data.errorBody}`
+          }
+        } else {
+          this.message += (`\n${err.message}`)
+        }
+      } else if (err instanceof Error) {
         this.message += ("\n" + err.message)
         this.message += ("\n" + err.stack)
       } else {
